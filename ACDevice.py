@@ -1,5 +1,5 @@
-from . import ACDeviceInfo
-from . import PccAccount
+from .ACDeviceInfo import ACDeviceInfo
+from .PccAccount import PccAccount
 
 try:
     from .pccLocal.pcomfortcloud import constants as pccConstants
