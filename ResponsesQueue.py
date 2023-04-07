@@ -6,6 +6,7 @@ class ResponsesQueue:
         self.queue = queue.Queue()
 
     def add(self, response: Response):
+        print(f"Adding response to queue: {response}")
         self.queue.put(response)        
 
     def get(self) -> Response:

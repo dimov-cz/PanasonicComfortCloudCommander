@@ -22,19 +22,26 @@ class PccCommander:
         try:
             subAccount = PccAccount(login, password, tokenPath)
             self.subAccounts.append(subAccount)
-            self.registerAccountDevices(subAccount)
+            print(f"Subaccount {login} added")
+            self.registerAccountDevices(subAccount, True)
         except Exception as e:
             print(f"Failed to add subaccount {login}: {e}")
             return False
         return True
     
-    def registerAccountDevices(self, account, prefferedForWrite=False):
-        for item in account.getSession().get_devices():
+    def registerAccountDevices(self, account: PccAccount, prefferedForWrite=False):
+        devices = account.getDevices()
+        if devices == None:
+            raise Exception(f"Failed to register account {account.login}")
+        
+        print(f"Registering {len(devices)} devices for account {account.login}")
+        for item in devices:
             deviceId = self.calcDeviceId(item["id"])
             if deviceId in self.devices:
                 if prefferedForWrite:
+                    self.devices[deviceId].updateReadAccount(account)
                     self.devices[deviceId].updateWriteAccount(account)
-                    print(f"Existing device updated: {self.devices[deviceId]}")
+                    print(f"Existing device accounts updated: {self.devices[deviceId]}")
             else:
                 newDeviceInfo = ACDeviceInfo(deviceId, item["id"], item["name"], item["group"], item["model"])
                 newDevice = ACDevice(newDeviceInfo, account, account)
