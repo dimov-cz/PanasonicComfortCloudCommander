@@ -8,11 +8,15 @@ try:
 except ImportError:
     from pcomfortcloud import Session as pccSession
 
+globalCommunicationLockTime = 0
+delockTimeInterval = 15 # seconds
+
 class PccAccount:
     login = None
     password = None
     tokenPath = None
     session = None
+    deviceInfoUpdateInProgress: dict = {}
     def __init__(self, login, password, tokenPath) -> None:
         self.login = login
         self.password = password
@@ -33,12 +37,18 @@ class PccAccount:
         return self.session
 
     def __doAction(self, action: callable):
+        global globalCommunicationLockTime
         while True:
             try:
+                # Wait for global lock to be released
+                while globalCommunicationLockTime > time.time():
+                    time.sleep(delockTimeInterval)
+                    
                 return action()
             except pccResponseError as e:            
                 if e.status_code == 429:
-                    print(f"Action failed on {self.login}: Too many requests - retrying in 15 seconds")
+                    print(f"Action failed on {self.login}: Too many requests - retrying in {delockTimeInterval} seconds")
+                    globalCommunicationLockTime = time.time() + delockTimeInterval
                     time.sleep(15)
                 else:
                     print(f"Action failed on {self.login}: " + str(e.status_code))
@@ -53,8 +63,18 @@ class PccAccount:
     def getDevices(self):
         return self.__doAction(lambda: self.__getSession().get_devices());
     
+    """ returns True if update is in progress
+        There is no sense to have multiple update requests for the same device at the same time
+        This avoids cumulating request when the server is not responding
+    """
     def getDevice(self, ppcId):
-        return self.__doAction(lambda: self.__getSession().get_device(ppcId));
+        if self.deviceInfoUpdateInProgress.get(ppcId, False):
+            print(f"Get device info already update in progress for {ppcId}")
+            return True
+        self.deviceInfoUpdateInProgress[ppcId] = True
+        result = self.__doAction(lambda: self.__getSession().get_device(ppcId));
+        self.deviceInfoUpdateInProgress[ppcId] = False
+        return result
     
     def setDevice(self, ppcId, **kwargs):
         return self.__doAction(lambda: self.__getSession().set_device(ppcId, **kwargs));
