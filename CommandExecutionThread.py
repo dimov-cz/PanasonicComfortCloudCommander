@@ -37,6 +37,6 @@ class CommandExecutionThread(threading.Thread):
         if updateStatus:
             status = self.acDevice.getStatus()
             if status == None:
-                self.addResponse('error', "Failed to get status or another update already in progress")
+                self.addResponse('error', "Failed to update status")
             elif status != True: #True means status is updated already by another command
                 self.addResponse('status', status)

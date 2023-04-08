@@ -1,4 +1,5 @@
 import time
+import random
 try:
     from .pccLocal.pcomfortcloud import Session as pccSession
     from .pccLocal.pcomfortcloud import Error as pccError
@@ -42,16 +43,19 @@ class PccAccount:
             try:
                 # Wait for global lock to be released
                 while globalCommunicationLockTime > time.time():
-                    time.sleep(delockTimeInterval)
+                    time.sleep(delockTimeInterval + random.randint(-20, 20)/10) # +- 2 seconds
                     
                 return action()
             except pccResponseError as e:            
                 if e.status_code == 429:
                     print(f"Action failed on {self.login}: Too many requests - retrying in {delockTimeInterval} seconds")
                     globalCommunicationLockTime = time.time() + delockTimeInterval
-                    time.sleep(15)
+                    time.sleep(15 + random.randint(-20, 20)/10) # +- 2 seconds
+                elif e.status_code == 500:
+                    print(f"Server or connection error on {self.login}: " + e.text)
+                    return None
                 else:
-                    print(f"Action failed on {self.login}: " + str(e.status_code))
+                    print(f"Action failed on {self.login}: " + str(e.status_code) + " / " + str(e.args))
                     return None
             except pccLoginError as e:
                 print(f"Login failed for account {self.login}")
@@ -69,7 +73,7 @@ class PccAccount:
     """
     def getDevice(self, ppcId):
         if self.deviceInfoUpdateInProgress.get(ppcId, False):
-            print(f"Get device info already update in progress for {ppcId}")
+            print(f"Get device info update already in progress for {ppcId}")
             return True
         self.deviceInfoUpdateInProgress[ppcId] = True
         result = self.__doAction(lambda: self.__getSession().get_device(ppcId));
