@@ -1,11 +1,13 @@
 import time
 import random
+import logging
+from typing import Optional, List
 try:
     from .pccLocal.pcomfortcloud import Session as pccSession
     from .pccLocal.pcomfortcloud import Error as pccError
     from .pccLocal.pcomfortcloud import LoginError as pccLoginError
     from .pccLocal.pcomfortcloud import ResponseError as pccResponseError
-    print("Using local pcomfortcloud Session")
+    logging.getLogger().warn("Using local pcomfortcloud Session")
 except ImportError:
     from pcomfortcloud import Session as pccSession
 
@@ -13,12 +15,12 @@ globalCommunicationLockTime = 0
 delockTimeInterval = 15 # seconds
 
 class PccAccount:
-    login = None
-    password = None
-    tokenPath = None
-    session = None
+    login: Optional[str] = None
+    password: Optional[str] 
+    tokenPath: str
+    session: Optional[pccSession] = None
     deviceInfoUpdateInProgress: dict = {}
-    def __init__(self, login, password, tokenPath) -> None:
+    def __init__(self, login: str, password: str, tokenPath: str) -> None:
         self.login = login
         self.password = password
         self.tokenPath = tokenPath
@@ -37,7 +39,7 @@ class PccAccount:
         self.session = pccSession(self.login, self.password, self.tokenPath)
         return self.session
 
-    def __doAction(self, action: callable):
+    def __doAction(self, action):
         global globalCommunicationLockTime
         while True:
             try:
@@ -48,23 +50,24 @@ class PccAccount:
                 return action()
             except pccResponseError as e:            
                 if e.status_code == 429:
-                    print(f"Action failed on {self.login}: Too many requests - retrying in {delockTimeInterval} seconds")
+                    logging.warning(f"Action failed on {self.login}: Too many requests - retrying in {delockTimeInterval} seconds")
                     globalCommunicationLockTime = time.time() + delockTimeInterval
                     time.sleep(15 + random.randint(-20, 20)/10) # +- 2 seconds
                 elif e.status_code == 500:
-                    print(f"Server or connection error on {self.login}: " + e.text)
+                    logging.info(f"Server or connection error on {self.login}: " + e.text)
+                    #TODO process this availabality status
                     return None
                 else:
-                    print(f"Action failed on {self.login}: " + str(e.status_code) + " / " + str(e.args))
+                    logging.error(f"Action failed on {self.login}: " + str(e.status_code) + " / " + str(e.args))
                     return None
             except pccLoginError as e:
-                print(f"Login failed for account {self.login}")
+                logging.error(f"Login failed for account {self.login}")
                 return None
             except Exception as e:
-                print(f"Action failed on {self.login}: " + str(e))
+                logging.error(f"Action failed on {self.login}: " + str(e))
                 return None
     
-    def getDevices(self):
+    def getDevices(self) -> Optional[List]:
         return self.__doAction(lambda: self.__getSession().get_devices());
     
     """ returns True if update is in progress
@@ -73,7 +76,7 @@ class PccAccount:
     """
     def getDevice(self, ppcId):
         if self.deviceInfoUpdateInProgress.get(ppcId, False):
-            print(f"Get device info update already in progress for {ppcId}")
+            logging.debug(f"Get device info update already in progress for {ppcId}")
             return True
         self.deviceInfoUpdateInProgress[ppcId] = True
         result = self.__doAction(lambda: self.__getSession().get_device(ppcId));
@@ -81,4 +84,5 @@ class PccAccount:
         return result
     
     def setDevice(self, ppcId, **kwargs):
+        self.__getSession()._raw = True
         return self.__doAction(lambda: self.__getSession().set_device(ppcId, **kwargs));

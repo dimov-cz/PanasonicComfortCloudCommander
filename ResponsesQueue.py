@@ -1,4 +1,6 @@
+from typing import Optional
 import queue
+import logging
 from .Response import Response
 
 class ResponsesQueue:
@@ -6,10 +8,10 @@ class ResponsesQueue:
         self.queue = queue.Queue()
 
     def add(self, response: Response):
-        print(f"Adding response to queue: {response}")
+        logging.debug(f"Adding response to queue: {response}")
         self.queue.put(response)        
 
-    def get(self) -> Response:
+    def get(self) -> Optional[Response]:
         try:
             message = self.queue.get(block=False)
         except queue.Empty:

@@ -1,15 +1,19 @@
+from typing import Optional
+import logging
 from .ACDeviceInfo import ACDeviceInfo
 from .PccAccount import PccAccount
+from .ACDeviceState import ACDeviceState
+from .ACDeviceStateValue import ACDeviceStateValue
 
 try:
     from .pccLocal.pcomfortcloud import constants as pccConstants
-    print("Using local pcomfortcloud constants")
+    logging.getLogger().warn("Using local pcomfortcloud constants")
 except ImportError:
     from pcomfortcloud import constants as pccConstants
 
 class ACDevice:
-    readAccount: PccAccount = None
-    writeAccount: PccAccount = None
+    readAccount:PccAccount
+    writeAccount:PccAccount
     
     def __init__(self, acDevice: ACDeviceInfo, readAccount: PccAccount, writeAccount: PccAccount) -> None:
         self.acDevice = acDevice
@@ -27,8 +31,22 @@ class ACDevice:
     def getDeviceInfo(self):
         return self.acDevice
     
-    def getStatus(self):
-        return self.readAccount.getDevice(self.acDevice.pccId)
+    def getStatus(self) -> ACDeviceState:
+        data = self.readAccount.getDevice(self.acDevice.pccId)
+        state = ACDeviceState.createFromPcc(data)
+        return state
+        
+    def setState(self, state: ACDeviceState):
+        state.normalize()
+        kwargs = {}
+        if state.power is not None:
+            kwargs["power"] = pccConstants.Power(state.power.value)
+        if state.mode is not None:
+            kwargs["mode"] = pccConstants.OperationMode(state.mode.value)
+        if state.temperature is not None:
+            kwargs["temperature"] = state.temperature
+        
+        self.writeAccount.setDevice(self.acDevice.pccId, **kwargs)
         
     def setPower(self, state):
         try:
