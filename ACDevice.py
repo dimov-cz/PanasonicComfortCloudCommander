@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 import logging
 from .ACDeviceInfo import ACDeviceInfo
 from .PccAccount import PccAccount
@@ -31,8 +31,12 @@ class ACDevice:
     def getDeviceInfo(self):
         return self.acDevice
     
-    def getStatus(self) -> ACDeviceState:
-        data = self.readAccount.getDevice(self.acDevice.pccId)
+    #true if status update already in progress
+    def getStatus(self) -> Union[ACDeviceState, bool]:
+        data = self.readAccount.getDevice(self.acDevice.deviceId)
+        if data is True:
+            return True
+        logging.getLogger().debug(f"Got device status: {data}")
         state = ACDeviceState.createFromPcc(data)
         return state
         
@@ -45,22 +49,32 @@ class ACDevice:
             kwargs["mode"] = pccConstants.OperationMode(state.mode.value)
         if state.temperature is not None:
             kwargs["temperature"] = state.temperature
+        if state.eco is not None:
+            kwargs["eco"] = pccConstants.EcoMode(state.eco.value)
+        if state.fanSpeed is not None:
+            kwargs["fanSpeed"] = pccConstants.FanSpeed(state.fanSpeed.value)
+        if state.airSwingVertical is not None:
+            kwargs["airSwingVertical"] = pccConstants.AirSwingUD(state.airSwingVertical.value)
+        if state.airSwingHorizontal is not None:
+            kwargs["airSwingHorizontal"] = pccConstants.AirSwingLR(state.airSwingHorizontal.value)
+        if state.nanoe is not None:
+            kwargs["nanoe"] = pccConstants.NanoeMode(state.nanoe.value)            
         
-        self.writeAccount.setDevice(self.acDevice.pccId, **kwargs)
+        self.writeAccount.setDevice(self.acDevice.deviceId, **kwargs)
         
     def setPower(self, state):
         try:
             stateConst = pccConstants.Power[state]
         except KeyError:
             stateConst = pccConstants.Power(int(state))
-        self.writeAccount.setDevice(self.acDevice.pccId, power = stateConst)
+        self.writeAccount.setDevice(self.acDevice.deviceId, power = stateConst)
         
     def setMode(self, state):
         try:
             stateConst = pccConstants.OperationMode[state]
         except KeyError:
             stateConst = pccConstants.OperationMode(int(state))
-        self.writeAccount.setDevice(self.acDevice.pccId, mode = stateConst)
+        self.writeAccount.setDevice(self.acDevice.deviceId, mode = stateConst)
         
     def setTemperature(self, temperature):
-        self.writeAccount.setDevice(self.acDevice.pccId, temperature = temperature)
+        self.writeAccount.setDevice(self.acDevice.deviceId, temperature = temperature)

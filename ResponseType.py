@@ -2,9 +2,8 @@
 from enum import Enum
 
 class ResponseType(Enum):
-    Registration = "reg"
-    Announcement = "ann"
-    RegistrationList = "reg-list"
+    PreRegistration = "reg"
+    Registration = "ann"
     Status = "status"
     Error = "error"
     

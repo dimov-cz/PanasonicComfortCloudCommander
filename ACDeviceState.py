@@ -5,11 +5,13 @@ import json
 from .ACDeviceStateValue import ACDeviceStateValue
 
 class ACDeviceState:
+    available: Optional[bool] = None
     temperatureInside: Optional[float] = None
     temperatureOutside: Optional[float] = None
     temperature: Optional[float] = None
     power: Optional[ACDeviceStateValue] = None
     mode: Optional[ACDeviceStateValue] = None
+    presetId: Optional[str] = None
     fanSpeed: Optional[ACDeviceStateValue] = None
     airSwingHorizontal: Optional[ACDeviceStateValue] = None
     airSwingVertical: Optional[ACDeviceStateValue] = None
@@ -20,7 +22,7 @@ class ACDeviceState:
         pass
     
     def __str__(self) -> str:
-        return f"ACDeviceState(temperatureInside={self.temperatureInside}, temperatureOutside={self.temperatureOutside}, temperature={self.temperature}, power={self.power}, mode={self.mode}, fanSpeed={self.fanSpeed}, airSwingHorizontal={self.airSwingHorizontal}, airSwingVertical={self.airSwingVertical}, eco={self.eco}, nanoe={self.nanoe})"
+        return f"ACDeviceState(avail={self.available}, tIn={self.temperatureInside}, tOut={self.temperatureOutside}, t={self.temperature}, p={self.power}, m={self.mode}, fan={self.fanSpeed}, aH={self.airSwingHorizontal}, aV={self.airSwingVertical}, eco={self.eco}, nanoe={self.nanoe})"
     
     def normalize(self):
         if not self.power is None and not isinstance(self.power, ACDeviceStateValue):
@@ -30,27 +32,47 @@ class ACDeviceState:
         if not self.temperature is None and not isinstance(self.temperature, float):
             self.temperature = float(self.temperature)
         
+    # return true if current state has same goal state at the tested state
+    def matches(self, test:"ACDeviceState"):
+        if self.available is not None and self.available != test.available: return False
+        if self.temperature is not None and self.temperature != test.temperature: return False
+        
+        if self.power is not None and self.power.matches(test.power): return False
+        if self.mode is not None and self.mode.matches(test.mode): return False
+        if self.fanSpeed is not None and self.fanSpeed.matches(test.fanSpeed): return False
+        if self.airSwingHorizontal is not None and self.airSwingHorizontal.matches(test.airSwingHorizontal): return False
+        if self.airSwingVertical is not None and self.airSwingVertical.matches(test.airSwingVertical): return False
+        if self.eco is not None and self.eco.matches(test.eco): return False
+        if self.nanoe is not None and self.nanoe.matches(test.nanoe): return False        
+        return True
     
     @staticmethod
     def pccConstToData(obj):
         if issubclass(obj.__class__, Enum):
             return ACDeviceStateValue(obj.value, obj.name)
-        return super().default(obj)      
+        raise Exception("Unknown type for enum convert: " + str(obj.__class__))
+        #return super().default(obj)
     
     @staticmethod
-    def createFromPcc(data):
-        data = data["parameters"]
+    def createFromPcc(data) -> "ACDeviceState":
         obj = ACDeviceState()
-        obj.temperatureInside = data["temperatureInside"]
-        obj.temperatureOutside = data["temperatureOutside"]
-        obj.temperature = data["temperature"]
-        obj.power = ACDeviceState.pccConstToData(data["power"])
-        obj.mode = ACDeviceState.pccConstToData(data["mode"])
-        obj.fanSpeed = ACDeviceState.pccConstToData(data["fanSpeed"])
-        obj.airSwingHorizontal = ACDeviceState.pccConstToData(data["airSwingHorizontal"])
-        obj.airSwingVertical = ACDeviceState.pccConstToData(data["airSwingVertical"])
-        obj.eco = ACDeviceState.pccConstToData(data["eco"])
-        obj.nanoe = ACDeviceState.pccConstToData(data["nanoe"])
+        if data is None:
+            obj.available = False
+        else:
+            if data is False or not "parameters" in data:
+                raise Exception("Invalid data format: " + str(data))
+            data = data["parameters"]
+            obj.available = True
+            obj.temperatureInside = data["temperatureInside"]
+            obj.temperatureOutside = data["temperatureOutside"]
+            obj.temperature = data["temperature"]
+            obj.power = ACDeviceState.pccConstToData(data["power"])
+            obj.mode = ACDeviceState.pccConstToData(data["mode"])
+            obj.fanSpeed = ACDeviceState.pccConstToData(data["fanSpeed"])
+            obj.airSwingHorizontal = ACDeviceState.pccConstToData(data["airSwingHorizontal"])
+            obj.airSwingVertical = ACDeviceState.pccConstToData(data["airSwingVertical"])
+            obj.eco = ACDeviceState.pccConstToData(data["eco"])
+            obj.nanoe = ACDeviceState.pccConstToData(data["nanoe"])
         return obj
     
     def __json__(self):

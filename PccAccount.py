@@ -46,7 +46,7 @@ class PccAccount:
                 # Wait for global lock to be released
                 while globalCommunicationLockTime > time.time():
                     time.sleep(delockTimeInterval + random.randint(-20, 20)/10) # +- 2 seconds
-                    
+                logging.info(f"Action on {self.login}")
                 return action()
             except pccResponseError as e:            
                 if e.status_code == 429:
@@ -68,6 +68,7 @@ class PccAccount:
                 return None
     
     def getDevices(self) -> Optional[List]:
+        logging.info("Requesting devices list")
         return self.__doAction(lambda: self.__getSession().get_devices());
     
     """ returns True if update is in progress

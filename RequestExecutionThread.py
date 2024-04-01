@@ -30,8 +30,12 @@ class RequestExecutionThread(threading.Thread):
         updateStatus = False
         
         if (self.request.type == RequestType.ListDevices):
-            for device in self.request.account.getDevices():
-                self.addResponse(ResponseType.Registration, { 'device': device, 'account': self.request.account }, None)
+            devices = self.request.account.getDevices()
+            if devices == None:
+                self.addResponse(ResponseType.Error, "Failed to get devices", None)
+                return
+            for device in devices:
+                self.addResponse(ResponseType.PreRegistration, { 'device': device, 'account': self.request.account }, None)
         
         elif (self.request.type == RequestType.Status):
             updateStatus = True
@@ -53,7 +57,9 @@ class RequestExecutionThread(threading.Thread):
         
         if updateStatus:
             status = self.request.device.getStatus()
-            if status == None:
-                self.addResponse(ResponseType.Error, "Failed to update status", self.request.device)
-            elif status != True: #True means status is updated already by another command
+            if status == True:
+                return
+            elif isinstance(status, ACDeviceState):
                 self.addResponse(ResponseType.Status, status, self.request.device)
+            else:
+                self.addResponse(ResponseType.Error, "Failed to update status", self.request.device)
