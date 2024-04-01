@@ -7,12 +7,16 @@ try:
     from .pccLocal.pcomfortcloud import Error as pccError
     from .pccLocal.pcomfortcloud import LoginError as pccLoginError
     from .pccLocal.pcomfortcloud import ResponseError as pccResponseError
-    logging.getLogger().warn("Using local pcomfortcloud Session")
+    logging.getLogger().warn("Using local pcomfortcloud")
 except ImportError:
     from pcomfortcloud import Session as pccSession
+    from pcomfortcloud import Error as pccError
+    from pcomfortcloud import LoginError as pccLoginError
+    from pcomfortcloud import ResponseError as pccResponseError
 
 globalCommunicationLockTime = 0
 delockTimeInterval = 15 # seconds
+
 
 class PccAccount:
     login: Optional[str] = None
